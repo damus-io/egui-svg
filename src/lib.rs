@@ -1,7 +1,6 @@
 use egui::emath::TSTransform;
 use egui::epaint::{PathShape, PathStroke};
 use egui::{pos2, vec2, Color32, Painter, Response, Sense, Shape, Ui, Vec2, Widget};
-use itertools::Itertools;
 use usvg::{Options, Paint, Tree};
 
 pub struct SVG {
@@ -40,7 +39,6 @@ impl SVG {
     fn render_group(&self, group: &usvg::Group, painter: &Painter) {
         if !group.should_isolate() {
             self.render_nodes(group, painter);
-            return;
         }
     }
 
@@ -55,7 +53,7 @@ impl SVG {
             usvg::Node::Path(ref path) => {
                 self.render_path(path, painter);
             }
-            usvg::Node::Image(ref image) => {
+            usvg::Node::Image(ref _image) => {
                 todo!()
             }
         }
@@ -67,8 +65,12 @@ impl SVG {
         }
 
         // convert to PathShape
-        let points = path.data().points().iter()
-            .map(|p| pos2(p.x, p.y)).collect();
+        let points = path
+            .data()
+            .points()
+            .iter()
+            .map(|p| pos2(p.x, p.y))
+            .collect();
         let fill = if let Some(f) = path.fill() {
             Self::paint_to_color(f.paint())
         } else {

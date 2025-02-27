@@ -30,28 +30,28 @@ impl SVG {
         self
     }
 
-    fn render_nodes(&self, group: &usvg::Group, painter: &Painter) {
+    fn render_nodes(group: &usvg::Group, painter: &Painter, scale: Option<f32>) {
         for node in group.children() {
-            self.render_node(node, painter);
+            Self::render_node(node, painter, scale);
         }
     }
 
-    fn render_group(&self, group: &usvg::Group, painter: &Painter) {
+    fn render_group(group: &usvg::Group, painter: &Painter, scale: Option<f32>) {
         if !group.should_isolate() {
-            self.render_nodes(group, painter);
+            Self::render_nodes(group, painter, scale);
         }
     }
 
-    fn render_node(&self, node: &usvg::Node, painter: &Painter) {
+    fn render_node(node: &usvg::Node, painter: &Painter, scale: Option<f32>) {
         match node {
             usvg::Node::Group(ref group) => {
-                self.render_group(group, painter);
+                Self::render_group(group, painter, scale);
             }
             usvg::Node::Text(ref text) => {
-                self.render_group(text.flattened(), painter);
+                Self::render_group(text.flattened(), painter, scale);
             }
             usvg::Node::Path(ref path) => {
-                self.render_path(path, painter);
+                Self::render_path(path, painter, scale);
             }
             usvg::Node::Image(ref _image) => {
                 todo!()
@@ -59,7 +59,7 @@ impl SVG {
         }
     }
 
-    fn render_path(&self, path: &usvg::Path, painter: &Painter) {
+    fn render_path(path: &usvg::Path, painter: &Painter, scale: Option<f32>) {
         if !path.is_visible() {
             return;
         }
@@ -89,7 +89,7 @@ impl SVG {
         if transform.has_scale() {
             shape.scale(transform.sx.min(transform.sy));
         }
-        if let Some(scale) = self.scale {
+        if let Some(scale) = scale {
             shape.transform(TSTransform::from_scaling(scale));
         }
         painter.add(shape);
@@ -104,12 +104,20 @@ impl SVG {
         }
     }
 
-    pub fn show(&self, ui: &mut Ui) -> Response {
-        let group = self.tree.root();
-        let size = Self::size_from_group(group, self.scale);
+    pub fn show_tree(ui: &mut Ui, tree: &Tree, scale: Option<f32>) -> Response {
+        let group = tree.root();
+        let size = Self::size_from_group(group, scale);
         let (response, painter) = ui.allocate_painter(size, Sense::click());
-        self.render_group(group, &painter);
+        Self::render_group(group, &painter, scale);
         response
+    }
+
+    pub fn show_scaled(&self, ui: &mut Ui, scale: f32) -> Response {
+        Self::show_tree(ui, &self.tree, Some(scale))
+    }
+
+    pub fn show(&self, ui: &mut Ui) -> Response {
+        Self::show_tree(ui, &self.tree, self.scale)
     }
 
     pub fn size_from_group(group: &usvg::Group, scale: Option<f32>) -> Vec2 {

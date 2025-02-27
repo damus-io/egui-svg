@@ -1,6 +1,6 @@
 use egui::emath::TSTransform;
 use egui::epaint::{PathShape, PathStroke};
-use egui::{pos2, vec2, Color32, Painter, Response, Sense, Shape, Ui, Vec2, Widget};
+use egui::{pos2, vec2, Color32, Painter, Pos2, Response, Sense, Shape, Ui, Vec2, Widget};
 use usvg::{Options, Paint, Tree};
 
 pub struct SVG {
@@ -30,28 +30,28 @@ impl SVG {
         self
     }
 
-    fn render_nodes(group: &usvg::Group, painter: &Painter, scale: Option<f32>) {
+    fn render_nodes(group: &usvg::Group, painter: &Painter, paint_at: Pos2, scale: Option<f32>) {
         for node in group.children() {
-            Self::render_node(node, painter, scale);
+            Self::render_node(node, painter, paint_at, scale);
         }
     }
 
-    fn render_group(group: &usvg::Group, painter: &Painter, scale: Option<f32>) {
+    fn render_group(group: &usvg::Group, painter: &Painter, paint_at: Pos2, scale: Option<f32>) {
         if !group.should_isolate() {
-            Self::render_nodes(group, painter, scale);
+            Self::render_nodes(group, painter, paint_at, scale);
         }
     }
 
-    fn render_node(node: &usvg::Node, painter: &Painter, scale: Option<f32>) {
+    fn render_node(node: &usvg::Node, painter: &Painter, paint_at: Pos2, scale: Option<f32>) {
         match node {
             usvg::Node::Group(ref group) => {
-                Self::render_group(group, painter, scale);
+                Self::render_group(group, painter, paint_at, scale);
             }
             usvg::Node::Text(ref text) => {
-                Self::render_group(text.flattened(), painter, scale);
+                Self::render_group(text.flattened(), painter, paint_at, scale);
             }
             usvg::Node::Path(ref path) => {
-                Self::render_path(path, painter, scale);
+                Self::render_path(path, painter, paint_at, scale);
             }
             usvg::Node::Image(ref _image) => {
                 todo!()
@@ -59,7 +59,7 @@ impl SVG {
         }
     }
 
-    fn render_path(path: &usvg::Path, painter: &Painter, scale: Option<f32>) {
+    fn render_path(path: &usvg::Path, painter: &Painter, paint_at: Pos2, scale: Option<f32>) {
         if !path.is_visible() {
             return;
         }
@@ -69,8 +69,9 @@ impl SVG {
             .data()
             .points()
             .iter()
-            .map(|p| pos2(p.x, p.y))
+            .map(|p| pos2(paint_at.x + p.x, paint_at.y + p.y))
             .collect();
+
         let fill = if let Some(f) = path.fill() {
             Self::paint_to_color(f.paint())
         } else {
@@ -108,7 +109,7 @@ impl SVG {
         let group = tree.root();
         let size = Self::size_from_group(group, scale);
         let (response, painter) = ui.allocate_painter(size, Sense::click());
-        Self::render_group(group, &painter, scale);
+        Self::render_group(group, &painter, response.rect.min, scale);
         response
     }
 

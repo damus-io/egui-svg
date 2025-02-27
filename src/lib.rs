@@ -103,19 +103,28 @@ impl SVG {
             Paint::Pattern(_) => todo!(),
         }
     }
+
+    pub fn show(&self, ui: &mut Ui) -> Response {
+        let group = self.tree.root();
+        let size = Self::size_from_group(group, self.scale);
+        let (response, painter) = ui.allocate_painter(size, Sense::click());
+        self.render_group(group, &painter);
+        response
+    }
+
+    pub fn size_from_group(group: &usvg::Group, scale: Option<f32>) -> Vec2 {
+        let bbox = group.abs_bounding_box();
+
+        if let Some(s) = scale {
+            vec2(bbox.width() * s, bbox.height() * s)
+        } else {
+            vec2(bbox.width(), bbox.height())
+        }
+    }
 }
 
 impl Widget for SVG {
     fn ui(self, ui: &mut Ui) -> Response {
-        let bbox = self.tree.root().abs_bounding_box();
-
-        let size = if let Some(s) = self.scale {
-            vec2(bbox.width() * s, bbox.height() * s)
-        } else {
-            vec2(bbox.width(), bbox.height())
-        };
-        let (response, painter) = ui.allocate_painter(size, Sense::click());
-        self.render_group(self.tree.root(), &painter);
-        response
+        self.show(ui)
     }
 }
